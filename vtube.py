@@ -27,7 +27,6 @@ class VTubeStudio:
             result = self.request("AuthenticationTokenRequest", {
                 "pluginName": self.plugin_name,
                 "pluginDeveloper": self.developer,
-                "pluginIcon": "",
             })
             token = result.get("data", {}).get("authenticationToken", "")
             if token:
