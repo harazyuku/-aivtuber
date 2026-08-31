@@ -113,7 +113,8 @@ def render_live2d(audio_path: Path, video_path: Path) -> None:
         vts.load_model(os.getenv("VTS_MODEL", "Mayoi"))
         obs.connect()
         obs.start_recording()
-        parameter_id = os.getenv("VTS_MOUTH_PARAMETER", "ParamMouthOpenY")
+        parameter_id = os.getenv("VTS_MOUTH_PARAMETER", "AutoMouth")
+        vts.ensure_custom_parameter(parameter_id)
         with wave.open(str(audio_path), "rb") as audio:
             sample_rate = audio.getframerate()
             chunk_frames = max(1, sample_rate // 20)

@@ -81,6 +81,19 @@ class VTubeStudio:
             "parameterValues": [{"id": parameter_id, "value": max(0.0, min(1.0, value))}],
         })
 
+    def ensure_custom_parameter(self, parameter_name: str = "AutoMouth") -> None:
+        parameters = self.request("InputParameterListRequest").get("data", {}).get("defaultParameters", [])
+        parameters += self.request("InputParameterListRequest").get("data", {}).get("customParameters", [])
+        if any(item.get("name") == parameter_name for item in parameters):
+            return
+        self.request("ParameterCreationRequest", {
+            "parameterName": parameter_name,
+            "explanation": "AI音声の音量から口の開きを制御します。",
+            "min": 0,
+            "max": 1,
+            "defaultValue": 0,
+        })
+
     def close(self) -> None:
         if self.socket is not None:
             self.socket.close()

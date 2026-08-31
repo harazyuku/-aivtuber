@@ -28,7 +28,7 @@ OBSにVTube Studioのウィンドウキャプチャを1つ設定し、OBS WebSoc
 
 VTube StudioのPlugin APIを許可すると、初回実行時に認証確認が表示されます。許可後はMayoiの読み込み、録画開始・停止、音声との合成を自動で行います。
 
-生成した音声の音量を解析し、VTube Studioの`ParamMouthOpenY`へ送るため、マイクなしで口パクします。モデルによって口パラメータ名が違う場合は`VTS_MOUTH_PARAMETER`を変更してください。
+生成した音声の音量を解析し、VTube Studioのカスタム入力パラメータ`AutoMouth`へ送るため、マイクなしで口パクします。初回だけMayoiのモデル設定で、口の開きのINPUTに`AutoMouth`を選んでください。モデルによって口パラメータ名が違う場合は`VTS_MOUTH_PARAMETER`を変更してください。
 
 ## 注意
 
