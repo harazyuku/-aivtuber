@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -81,8 +82,12 @@ def upload_video(video_path: Path, script: str) -> str:
     return f"https://youtu.be/{response['id']}"
 
 
-def fetch_recent_comments(max_videos: int = 5, max_comments: int = 100) -> list[dict[str, object]]:
-    """自分の最近の動画からコメントを取得する。"""
+def fetch_recent_comments(
+    max_videos: int = 20,
+    max_comments: int = 100,
+    video_days: int = 15,
+) -> list[dict[str, object]]:
+    """直近video_days日以内の自分の動画からコメントを取得する。"""
     try:
         from googleapiclient.discovery import build
     except ImportError as exc:
@@ -95,11 +100,18 @@ def fetch_recent_comments(max_videos: int = 5, max_comments: int = 100) -> list[
         return []
     uploads_id = items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
     videos = youtube.playlistItems().list(
-        part="contentDetails", playlistId=uploads_id, maxResults=max_videos
+        part="snippet,contentDetails", playlistId=uploads_id, maxResults=min(50, max_videos)
     ).execute().get("items", [])
 
     comments: list[dict[str, object]] = []
+    cutoff = datetime.now(timezone.utc) - timedelta(days=video_days)
     for video in videos:
+        published_at = video.get("snippet", {}).get("publishedAt")
+        if not published_at:
+            continue
+        published = datetime.fromisoformat(published_at.replace("Z", "+00:00"))
+        if published < cutoff:
+            break
         video_id = video["contentDetails"]["videoId"]
         response = youtube.commentThreads().list(
             part="snippet", videoId=video_id, maxResults=min(100, max_comments),

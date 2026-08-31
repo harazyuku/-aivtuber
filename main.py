@@ -257,8 +257,9 @@ def main() -> None:
         try:
             from youtube import fetch_recent_comments
             comments = fetch_recent_comments(
-                int(os.getenv("FEEDBACK_MAX_VIDEOS", "5")),
+                int(os.getenv("FEEDBACK_MAX_VIDEOS", "20")),
                 int(os.getenv("FEEDBACK_MAX_COMMENTS", "100")),
+                int(os.getenv("FEEDBACK_VIDEO_DAYS", "15")),
             )
             update_feedback(ROOT, comments)
             print(f"[FEEDBACK] コメントを確認しました: {len(comments)}件", flush=True)

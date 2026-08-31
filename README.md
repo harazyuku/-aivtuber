@@ -74,7 +74,7 @@ UPLOAD_TO_YOUTUBE=true python3 main.py
 - コメントから生まれた次回動画の案
 - 繰り返しを避けたい要素
 
-要約結果は`output/feedback.json`へ保存され、次回の台本生成時に参考情報として自動で渡されます。同じコメントはIDで管理するため、毎回同じ内容を再処理しません。取得範囲は`.env`の`FEEDBACK_MAX_VIDEOS`と`FEEDBACK_MAX_COMMENTS`で調整できます。
+要約結果は`output/feedback.json`へ保存され、次回の台本生成時に参考情報として自動で渡されます。対象は投稿日が直近15日以内の動画で、同じコメントはIDをPythonで比較して除外するため、前回以降に新しく付いたコメントだけを要約します。取得範囲は`.env`の`FEEDBACK_VIDEO_DAYS`、`FEEDBACK_MAX_VIDEOS`、`FEEDBACK_MAX_COMMENTS`で調整できます。
 
 コメント学習を使うには、YouTube Data APIの読み取り権限が必要です。既存の`youtube_token.json`が投稿権限だけで作られている場合は、一度削除してから次回起動時に再認証してください。コメント取得や要約に失敗した場合も、通常の台本生成と動画作成は続行されます。
 
