@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -10,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 OUTPUT = ROOT / "output"
+HTTPS_CONTEXT = ssl.create_default_context(cafile="/etc/ssl/cert.pem")
 
 
 def load_env() -> None:
@@ -43,10 +45,13 @@ def generate_script() -> str:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
     request = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(request, timeout=60) as response:
+        with urllib.request.urlopen(request, timeout=60, context=HTTPS_CONTEXT) as response:
             data = json.loads(response.read().decode("utf-8"))
         return data["candidates"][0]["content"]["parts"][0]["text"].strip()
-    except (urllib.error.URLError, urllib.error.HTTPError, KeyError, IndexError, json.JSONDecodeError) as exc:
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:500]
+        raise RuntimeError(f"Gemini APIエラー ({exc.code}): {detail}") from exc
+    except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError) as exc:
         raise RuntimeError(f"Geminiから台本を取得できません: {exc}") from exc
 
 
@@ -86,7 +91,7 @@ def render(audio_path: Path, video_path: Path) -> None:
         "-r", fps, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
         "-shortest", str(video_path),
     ]
-    subprocess.run(command, check=True, capture_output=True, text=True)
+    subprocess.run(command, check=True)
 
 
 def main() -> None:
