@@ -22,6 +22,12 @@ python3 main.py
 
 動画は`output/`に作成されます。
 
+## Live2D録画
+
+OBSにVTube Studioのウィンドウキャプチャを1つ設定し、OBS WebSocketを有効にしてから、`.env`で`LIVE2D_RECORD=true`にします。OBSのWebSocket設定でパスワードを設定した場合は`OBS_PASSWORD`にも設定してください。
+
+VTube StudioのPlugin APIを許可すると、初回実行時に認証確認が表示されます。許可後はMayoiの読み込み、録画開始・停止、音声との合成を自動で行います。
+
 ## 注意
 
-この初版は安定して1本を作るため、Live2Dのリアルタイム録画とYouTube投稿はまだ接続していません。次の段階でVTube Studio/OBS録画とYouTube OAuth投稿を追加します。
+YouTubeへの自動投稿はまだ接続していません。動画を1本生成できることを確認してから、YouTube OAuth投稿を追加します。

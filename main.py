@@ -94,6 +94,35 @@ def render(audio_path: Path, video_path: Path) -> None:
     subprocess.run(command, check=True)
 
 
+def render_live2d(audio_path: Path, video_path: Path) -> None:
+    from obs import OBS
+    from vtube import VTubeStudio
+
+    vts = VTubeStudio(
+        os.getenv("VTS_URL", "ws://127.0.0.1:8001"),
+        ROOT / ".vtube_studio_token",
+        os.getenv("VTS_PLUGIN_NAME", "Auto AI VTuber"),
+        os.getenv("VTS_PLUGIN_DEVELOPER", "Auto AI VTuber Dev"),
+    )
+    obs = OBS(os.getenv("OBS_URL", "ws://127.0.0.1:4455"), os.getenv("OBS_PASSWORD", ""))
+    recording_path = None
+    try:
+        vts.connect()
+        vts.load_model(os.getenv("VTS_MODEL", "Mayoi"))
+        obs.connect()
+        obs.start_recording()
+        subprocess.run(["afplay", str(audio_path)], check=True)
+        recording_path = obs.stop_recording()
+        subprocess.run([
+            "ffmpeg", "-y", "-i", str(recording_path), "-i", str(audio_path),
+            "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac",
+            "-shortest", str(video_path),
+        ], check=True)
+    finally:
+        obs.close()
+        vts.close()
+
+
 def main() -> None:
     load_env()
     OUTPUT.mkdir(exist_ok=True)
@@ -107,7 +136,10 @@ def main() -> None:
     print("[2/3] AI音声を生成しています...", flush=True)
     synthesize(script, audio_path)
     print("[3/3] 動画を作成しています...", flush=True)
-    render(audio_path, video_path)
+    if os.getenv("LIVE2D_RECORD", "false").lower() == "true":
+        render_live2d(audio_path, video_path)
+    else:
+        render(audio_path, video_path)
     print(f"完成: {video_path}", flush=True)
 
 

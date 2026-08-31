@@ -1,1 +1,2 @@
 # この版はPython標準ライブラリだけで動作します。
+websocket-client>=1.8
