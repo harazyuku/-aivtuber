@@ -3,28 +3,30 @@ import os
 from pathlib import Path
 
 
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+]
 
 
-def upload_video(video_path: Path, script: str) -> str:
-    """OAuth認証済みのYouTubeチャンネルへ動画をアップロードする。"""
+def authorize():
+    """YouTube API用の認証情報を取得する。"""
     try:
         from google.auth.transport.requests import Request
         from google.oauth2.credentials import Credentials
         from google_auth_oauthlib.flow import InstalledAppFlow
-        from googleapiclient.discovery import build
-        from googleapiclient.http import MediaFileUpload
     except ImportError as exc:
         raise RuntimeError(
-            "YouTube投稿用ライブラリがありません。requirements.txtをインストールしてください。"
+            "YouTube連携用ライブラリがありません。requirements.txtをインストールしてください。"
         ) from exc
 
+    root = Path(__file__).resolve().parent
     client_path = Path(os.getenv("YOUTUBE_CLIENT_SECRETS", "client_secrets.json"))
     token_path = Path(os.getenv("YOUTUBE_TOKEN", "youtube_token.json"))
     if not client_path.is_absolute():
-        client_path = Path(__file__).resolve().parent / client_path
+        client_path = root / client_path
     if not token_path.is_absolute():
-        token_path = Path(__file__).resolve().parent / token_path
+        token_path = root / token_path
     if not client_path.exists():
         raise RuntimeError(f"Google OAuthの認証ファイルがありません: {client_path}")
 
@@ -36,9 +38,22 @@ def upload_video(video_path: Path, script: str) -> str:
             credentials.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(str(client_path), SCOPES)
-            # GUI環境によってブラウザが自動起動しないため、URLを表示して手動で開く。
             credentials = flow.run_local_server(port=0, open_browser=False)
         token_path.write_text(credentials.to_json(), encoding="utf-8")
+    return credentials
+
+
+def upload_video(video_path: Path, script: str) -> str:
+    """OAuth認証済みのYouTubeチャンネルへ動画をアップロードする。"""
+    try:
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaFileUpload
+    except ImportError as exc:
+        raise RuntimeError(
+            "YouTube投稿用ライブラリがありません。requirements.txtをインストールしてください。"
+        ) from exc
+
+    credentials = authorize()
 
     title_prefix = os.getenv("YOUTUBE_TITLE_PREFIX", "落津キナの記録")
     title = f"{title_prefix} {os.getenv('VIDEO_TITLE_SUFFIX', '')}".strip()
@@ -64,3 +79,42 @@ def upload_video(video_path: Path, script: str) -> str:
     while response is None:
         _, response = request.next_chunk()
     return f"https://youtu.be/{response['id']}"
+
+
+def fetch_recent_comments(max_videos: int = 5, max_comments: int = 100) -> list[dict[str, object]]:
+    """自分の最近の動画からコメントを取得する。"""
+    try:
+        from googleapiclient.discovery import build
+    except ImportError as exc:
+        raise RuntimeError("YouTube投稿用ライブラリがありません") from exc
+
+    youtube = build("youtube", "v3", credentials=authorize())
+    channel = youtube.channels().list(part="contentDetails", mine=True).execute()
+    items = channel.get("items", [])
+    if not items:
+        return []
+    uploads_id = items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
+    videos = youtube.playlistItems().list(
+        part="contentDetails", playlistId=uploads_id, maxResults=max_videos
+    ).execute().get("items", [])
+
+    comments: list[dict[str, object]] = []
+    for video in videos:
+        video_id = video["contentDetails"]["videoId"]
+        response = youtube.commentThreads().list(
+            part="snippet", videoId=video_id, maxResults=min(100, max_comments),
+            order="relevance", textFormat="plainText",
+        ).execute()
+        for item in response.get("items", []):
+            snippet = item["snippet"]["topLevelComment"]["snippet"]
+            text = snippet.get("textDisplay", "").strip()
+            if text:
+                comments.append({
+                    "id": item["id"],
+                    "video_id": video_id,
+                    "text": text[:500],
+                    "like_count": snippet.get("likeCount", 0),
+                })
+            if len(comments) >= max_comments:
+                return comments
+    return comments

@@ -12,6 +12,8 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
+from feedback import feedback_prompt, load_feedback, update_feedback
+
 
 ROOT = Path(__file__).resolve().parent
 OUTPUT = ROOT / "output"
@@ -34,6 +36,7 @@ def generate_script() -> str:
     if not api_key:
         raise RuntimeError("GEMINI_API_KEYが設定されていません")
     character = (ROOT / "prompts/character.txt").read_text(encoding="utf-8")
+    feedback = load_feedback(ROOT)
     topics = [
         line.strip()
         for line in (ROOT / "prompts/topics.txt").read_text(encoding="utf-8").splitlines()
@@ -57,7 +60,8 @@ def generate_script() -> str:
             "音声で読みやすい自然な日本語にしてください。"
             "見出し、箇条書き、文字数報告、制作メモなどは不要です。"
             "台本本文だけを出力してください。"
-            f"{retry_note}"
+            + feedback_prompt(feedback)
+            + retry_note
         )
         body = json.dumps({
             "systemInstruction": {"parts": [{"text": character}]},
@@ -249,6 +253,17 @@ def format_srt_time(seconds: float) -> str:
 def main() -> None:
     load_env()
     OUTPUT.mkdir(exist_ok=True)
+    if os.getenv("LEARN_FROM_YOUTUBE", "true").lower() == "true":
+        try:
+            from youtube import fetch_recent_comments
+            comments = fetch_recent_comments(
+                int(os.getenv("FEEDBACK_MAX_VIDEOS", "5")),
+                int(os.getenv("FEEDBACK_MAX_COMMENTS", "100")),
+            )
+            update_feedback(ROOT, comments)
+            print(f"[FEEDBACK] コメントを確認しました: {len(comments)}件", flush=True)
+        except Exception as exc:
+            print(f"[FEEDBACK] コメント取得をスキップしました: {exc}", flush=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     script_path = OUTPUT / f"{stamp}.txt"
     audio_path = OUTPUT / f"{stamp}.wav"

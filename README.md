@@ -66,6 +66,18 @@ UPLOAD_TO_YOUTUBE=true python3 main.py
 
 初回認証後は`youtube_token.json`を使って自動投稿します。公開する場合は`.env`の`YOUTUBE_PRIVACY_STATUS=public`に変更してください。YouTube投稿には公式の`videos.insert`を使っています。
 
+## コメントから視聴者の傾向を学ぶ
+
+`LEARN_FROM_YOUTUBE=true`（既定値）にすると、起動時に最近の動画のコメントを取得し、Geminiで次の内容へ要約します。
+
+- 視聴者に好評だった要素
+- コメントから生まれた次回動画の案
+- 繰り返しを避けたい要素
+
+要約結果は`output/feedback.json`へ保存され、次回の台本生成時に参考情報として自動で渡されます。同じコメントはIDで管理するため、毎回同じ内容を再処理しません。取得範囲は`.env`の`FEEDBACK_MAX_VIDEOS`と`FEEDBACK_MAX_COMMENTS`で調整できます。
+
+コメント学習を使うには、YouTube Data APIの読み取り権限が必要です。既存の`youtube_token.json`が投稿権限だけで作られている場合は、一度削除してから次回起動時に再認証してください。コメント取得や要約に失敗した場合も、通常の台本生成と動画作成は続行されます。
+
 ## 自動投稿の設計
 
 ### 実行方式
@@ -75,6 +87,15 @@ Macでは`launchd`（macOS標準のスケジュール機能）から、決めた
 ```bash
 UPLOAD_TO_YOUTUBE=true python3 main.py
 ```
+
+毎日自動で実行する場合は、`.env`に`UPLOAD_TO_YOUTUBE=true`を設定し、初回のYouTube OAuth認証を完了したあと、次を一度だけ実行します。
+
+```bash
+chmod +x run_auto.sh install_launchd.sh
+./install_launchd.sh
+```
+
+初期設定では毎日21:00に非公開投稿します。時刻は`.env`の`AUTO_POST_HOUR`と`AUTO_POST_MINUTE`で変更できます。実行ログは`output/automation.log`に保存されます。Macがスリープ中の時刻は、launchdの仕様上、復帰後に実行されるとは限らないため、常時起動できるMacで運用してください。
 
 このコマンド1回で、台本生成から動画作成、YouTube投稿までを行います。Linux Mintへ移す場合は、同じ処理を`systemd timer`または`cron`（Linuxの定期実行機能）から呼び出します。
 

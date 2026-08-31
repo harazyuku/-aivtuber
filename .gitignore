@@ -1,5 +1,6 @@
 .env
 output/*
+!output/.gitkeep
 __pycache__/
 .venv/
 client_secrets.json
