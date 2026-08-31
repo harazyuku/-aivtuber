@@ -73,6 +73,14 @@ class VTubeStudio:
         self.request("HotkeyTriggerRequest", {"hotkeyID": hotkey["hotkeyID"]})
         return True
 
+    def inject_mouth(self, value: float, parameter_id: str = "ParamMouthOpenY") -> None:
+        """音声の音量から計算した口の開き具合をLive2Dへ送る。"""
+        self.request("InjectParameterDataRequest", {
+            "faceFound": True,
+            "mode": "set",
+            "parameterValues": [{"id": parameter_id, "value": max(0.0, min(1.0, value))}],
+        })
+
     def close(self) -> None:
         if self.socket is not None:
             self.socket.close()

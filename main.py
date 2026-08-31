@@ -2,6 +2,8 @@ import json
 import os
 import subprocess
 import ssl
+import time
+import wave
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -111,7 +113,26 @@ def render_live2d(audio_path: Path, video_path: Path) -> None:
         vts.load_model(os.getenv("VTS_MODEL", "Mayoi"))
         obs.connect()
         obs.start_recording()
-        subprocess.run(["afplay", str(audio_path)], check=True)
+        parameter_id = os.getenv("VTS_MOUTH_PARAMETER", "ParamMouthOpenY")
+        with wave.open(str(audio_path), "rb") as audio:
+            sample_rate = audio.getframerate()
+            chunk_frames = max(1, sample_rate // 20)
+            player = subprocess.Popen(["afplay", str(audio_path)])
+            try:
+                while player.poll() is None:
+                    frames = audio.readframes(chunk_frames)
+                    if not frames:
+                        break
+                    samples = memoryview(frames).cast("h")
+                    rms = (sum(sample * sample for sample in samples) / max(1, len(samples))) ** 0.5 / 32768
+                    mouth = max(0.0, min(1.0, (rms - 0.015) * 18))
+                    vts.inject_mouth(mouth, parameter_id)
+                    time.sleep(0.05)
+                player.wait()
+            finally:
+                if player.poll() is None:
+                    player.terminate()
+                vts.inject_mouth(0.0, parameter_id)
         recording_path = obs.stop_recording()
         subprocess.run([
             "ffmpeg", "-y", "-i", str(recording_path), "-i", str(audio_path),
