@@ -1,2 +1,5 @@
 # この版はPython標準ライブラリだけで動作します。
 websocket-client>=1.8
+google-api-python-client>=2.160
+google-auth-oauthlib>=1.2
+google-auth-httplib2>=0.2

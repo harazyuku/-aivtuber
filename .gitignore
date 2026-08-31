@@ -2,3 +2,6 @@
 output/*
 __pycache__/
 .venv/
+client_secrets.json
+youtube_token.json
+.vtube_studio_token
